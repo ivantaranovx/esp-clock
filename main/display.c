@@ -13,18 +13,18 @@ ESP_EVENT_DEFINE_BASE(TIMER_EVENT);
 
 #define DIGITS 4
 
-#define SEG_A GPIO_NUM_3
-#define SEG_B GPIO_NUM_2
-#define SEG_C GPIO_NUM_1
-#define SEG_D GPIO_NUM_4
-#define SEG_E GPIO_NUM_5
-#define SEG_F GPIO_NUM_15
-#define SEG_G GPIO_NUM_0
+#define SEG_A GPIO_NUM_3  // Rx
+#define SEG_B GPIO_NUM_2  // D4
+#define SEG_C GPIO_NUM_1  // Tx
+#define SEG_D GPIO_NUM_4  // D2
+#define SEG_E GPIO_NUM_5  // D1
+#define SEG_F GPIO_NUM_15 // D8
+#define SEG_G GPIO_NUM_0  // D3
 
-#define DIG_1 GPIO_NUM_16
-#define DIG_2 GPIO_NUM_14
-#define DIG_3 GPIO_NUM_12
-#define DIG_4 GPIO_NUM_13
+#define DIG_1 GPIO_NUM_16 // D0
+#define DIG_2 GPIO_NUM_14 // D5
+#define DIG_3 GPIO_NUM_12 // D6
+#define DIG_4 GPIO_NUM_13 // D7
 
 static const uint8_t digits[DIGITS] = {
     DIG_1, DIG_2, DIG_3, DIG_4};
@@ -104,6 +104,7 @@ void display_set(DISPLAY_D d, uint16_t v)
 
 void display_init()
 {
+    // redirect from U1TXD to GPIO
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
 
     gpio_config_t io_conf;
