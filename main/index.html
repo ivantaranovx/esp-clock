@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>esp-clock</title>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <style>
+        .loader {
+            background-color: black;
+            background-repeat: no-repeat;
+            opacity: 50%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            visibility: hidden;
+        }
+
+        .loader-wheel {
+            animation: spin 1s infinite linear;
+            border: 2px solid rgba(30, 30, 30, 0.5);
+            border-left: 5px solid #fff;
+            border-radius: 50%;
+            height: 50px;
+            margin: auto;
+            margin-top: 50px;
+            width: 50px;
+        }
+
+        .round.green {
+            background-color: #00ff00;
+            border: 1px solid #00bb00;
+        }
+
+        .round.red {
+            background-color: #ff0000;
+            border: 1px solid #bb0000;
+        }
+
+        .round {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 5px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        table {
+            margin: auto;
+            background-color: #eee;
+            border: 1px solid #ccc;
+        }
+
+        th {
+            background-color: #888;
+            padding: 3px;
+        }
+
+        td {
+            padding: 10px;
+        }
+    </style>
+    <script>
+        var stateTimeout;
+        function get_data(url, cb, data = null) {
+            try {
+                fetch(url, {
+                    method: ((data === null) ? "GET" : "POST"),
+                    body: ((data === null) ? null : JSON.stringify(data)),
+                    headers: {
+                        "Content-type": "application/json; charset=UTF-8"
+                    }
+                })
+                    .then(response => response.text())
+                    .then(data => {
+                        setLoaderVisibility(false);
+                        cb(JSON.parse(data));
+                    });
+            } catch (e) {
+                console.log(e);
+            }
+        }
+        function setLoaderVisibility(v) {
+            document.getElementById("loader").style.visibility = v ? "visible" : "hidden";
+        }
+        function getState() {
+            get_data("/state", function (data) {
+                wifi_state = document.getElementById("wifi_state");
+                wifi_state.className = data.connected ? "round green" : "round red";
+                stateTimeout = setTimeout(() => {
+                    getState();
+                }, 10000);
+            });
+        }
+        addEventListener("DOMContentLoaded", (e) => {
+            setLoaderVisibility(true);
+            get_data("/settings", function (data) {
+                var selectList = document.getElementById("ap");
+                data.ap_list.forEach(ap => {
+                    var option = document.createElement("option");
+                    option.value = ap.ssid;
+                    selectList.appendChild(option);
+                });
+                document.getElementById("ssid").value = data.ssid;
+                document.getElementById("ntp").value = data.ntp;
+                timezone = document.getElementById("timezone");
+                Array.from(timezone.options).forEach(option => {
+                    option.selected = (data.tz === option.value);
+                });
+                stateTimeout = setTimeout(() => {
+                    getState();
+                }, 1000);
+            });
+        });
+        function save() {
+            clearTimeout(stateTimeout);
+            setLoaderVisibility(true);
+            get_data("/settings", function (data) {
+                stateTimeout = setTimeout(() => {
+                    getState();
+                }, 5000);
+            }, {
+                ssid: document.getElementById("ssid").value,
+                pass: document.getElementById("pass").value,
+                ntp: document.getElementById("ntp").value,
+                tz: document.getElementById("timezone").value
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <div class='loader' id='loader'>
+        <div class="loader-wheel"></div>
+    </div>
+    <table>
+        <tr>
+            <th colspan='2'>WiFi settings</th>
+        </tr>
+        <tr>
+            <td>WiFi SSID <div class='round' id='wifi_state'></div>
+            </td>
+            <td>
+                <input list='ap' id='ssid'>
+            </td>
+        </tr>
+        <tr>
+            <td>WiFi password</td>
+            <td><input type='password' id='pass'></td>
+        </tr>
+        <tr>
+            <th colspan='2'>Time settings</th>
+        </tr>
+        <tr>
+            <td>NTP server</td>
+            <td><input type='text' id='ntp'></td>
+        </tr>
+        <tr>
+            <td>TimeZone</td>
+            <td>
+                <select id='timezone'>
+                    <option value='GMT-0GMT-1,M3.5.0/1,M10.5.0/2'>Europe/Dublin</option>
+                    <option value='GMT-1GMT-2,M3.5.0/2,M10.5.0/3'>Europe/Warsaw</option>
+                    <option value='GMT-2GMT-3,M3.5.0/3,M10.5.0/4'>Europe/Kyiv</option>
+                    <option value='GMT-3'>Europe/Moscow</option>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td colspan='2'>
+                <hr>
+            </td>
+        </tr>
+        <tr>
+            <td colspan='2'>
+                <input type='button' value='save' onclick='save()'>
+            </td>
+        </tr>
+    </table>
+    <datalist id='ap'></datalist>
+</body>
+
+</html>
