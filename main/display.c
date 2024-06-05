@@ -16,15 +16,16 @@ ESP_EVENT_DEFINE_BASE(TIMER_EVENT);
 #define SEG_A GPIO_NUM_3  // Rx
 #define SEG_B GPIO_NUM_2  // D4
 #define SEG_C GPIO_NUM_1  // Tx
+
 #define SEG_D GPIO_NUM_4  // D2
 #define SEG_E GPIO_NUM_5  // D1
-#define SEG_F GPIO_NUM_15 // D8
+#define SEG_F GPIO_NUM_15 // D8 Gray    SD
 #define SEG_G GPIO_NUM_0  // D3
 
-#define DIG_1 GPIO_NUM_16 // D0
-#define DIG_2 GPIO_NUM_14 // D5
-#define DIG_3 GPIO_NUM_12 // D6
-#define DIG_4 GPIO_NUM_13 // D7
+#define DIG_1 GPIO_NUM_16 // D0 Magenta CS
+#define DIG_2 GPIO_NUM_14 // D5 Brown   BUSY+
+#define DIG_3 GPIO_NUM_12 // D6 Yellow  ST
+#define DIG_4 GPIO_NUM_13 // D7 Green   SH
 
 static const uint8_t digits[DIGITS] = {
     DIG_1, DIG_2, DIG_3, DIG_4};

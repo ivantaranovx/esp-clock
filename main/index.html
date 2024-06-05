@@ -5,6 +5,8 @@
     <title>esp-clock</title>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <link rel="icon"
+        href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABABAAAAAAARERERAAAAAREREREQAAABERERERAAABEREREREQAAAREQAREQAAABERAAARAAABEREBEREQAAAREQEREQAAABERARERAAAAARERERAAAAAAAQAQAAAAAAAAAAAAAAAAAAAAAAAAD//wAA/D8AAPAPAADgBwAAwAMAAMADAACAAQAAgAEAAIABAACAAQAAwAMAAMADAADgBwAA8A8AAPw/AAD//wAA" />
     <style>
         .loader {
             background-color: black;
@@ -71,28 +73,52 @@
         td {
             padding: 10px;
         }
+
+        .ver {
+            display: inline-block;
+            padding-left: 5px;
+        }
     </style>
     <script>
         var stateTimeout;
-        function get_data(url, cb, data = null) {
-            try {
-                fetch(url, {
-                    method: ((data === null) ? "GET" : "POST"),
-                    body: ((data === null) ? null : JSON.stringify(data)),
-                    headers: {
+        function get_data(url, cb, data = "") {
+            var method = "POST";
+            var body = null;
+            var headers = undefined;
+            switch (data.constructor.name) {
+                case "Object":
+                    body = JSON.stringify(data);
+                    headers = {
                         "Content-type": "application/json; charset=UTF-8"
-                    }
-                })
-                    .then(response => response.text())
-                    .then(data => {
-                        setLoaderVisibility(false);
-                        cb(JSON.parse(data));
-                    });
-            } catch (e) {
-                console.log(e);
+                    };
+                    break;
+                case "File":
+                    body = data;
+                    headers = {
+                        "Content-type": "application/octet-stream"
+                    };
+                    break;
+                default:
+                    method = "GET";
+                    break;
             }
+
+            fetch(url, {
+                method: method,
+                body: body,
+                headers: headers
+            })
+                .then(response => response.text())
+                .then(data => {
+                    setLoaderVisibility(false);
+                    cb(JSON.parse(data));
+                })
+                .catch((error) => {
+                    console.log(error);
+                });
         }
         function setLoaderVisibility(v) {
+            v = false;
             document.getElementById("loader").style.visibility = v ? "visible" : "hidden";
         }
         function getState() {
@@ -115,6 +141,7 @@
                 });
                 document.getElementById("ssid").value = data.ssid;
                 document.getElementById("ntp").value = data.ntp;
+                document.getElementById("ver").innerHTML = data.ver;
                 timezone = document.getElementById("timezone");
                 Array.from(timezone.options).forEach(option => {
                     option.selected = (data.tz === option.value);
@@ -138,10 +165,20 @@
                 tz: document.getElementById("timezone").value
             });
         }
+        function upgrade() {
+            files = document.getElementById("upgrade_file").files;
+            if (files.length == 0) return;
+            clearTimeout(stateTimeout);
+            setLoaderVisibility(true);
+            get_data("/upgrade", function (data) {
+                console.log(data);
+            }, files[0]);
+        }
     </script>
 </head>
 
 <body>
+    <datalist id='ap'></datalist>
     <div class='loader' id='loader'>
         <div class="loader-wheel"></div>
     </div>
@@ -181,15 +218,23 @@
         <tr>
             <td colspan='2'>
                 <hr>
+                <input type='button' value='Save' onclick='save()'>
             </td>
         </tr>
         <tr>
-            <td colspan='2'>
-                <input type='button' value='save' onclick='save()'>
+            <th colspan='2'>Firmware upgrade</th>
+        </tr>
+        <tr>
+            <td colspan='2'>Current version:<div id='ver' class='ver'></div>
             </td>
         </tr>
+        <tr>
+            <td colspan='2'><input type='file' accept='.bin' id='upgrade_file'></td>
+        </tr>
+        <tr>
+            <td colspan='2'><input type='button' value='Upgrade' onclick='upgrade()'></td>
+        </tr>
     </table>
-    <datalist id='ap'></datalist>
 </body>
 
 </html>

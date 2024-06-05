@@ -3,27 +3,55 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := esp-clock
+PROJECT_NAME = esp-clock
+IDF_PATH = ~/sources/ESP8266_RTOS_SDK
 
 include $(IDF_PATH)/make/project.mk
 
-FLASH_TOOL := $(ESPTOOLPY) --chip esp8266 --port /dev/ttyUSB0 --baud 2000000
-PART_ADDR := 0x300000
+FLASH_TOOL = $(ESPTOOLPY) --chip esp8266 --port /dev/ttyUSB0 --baud 2000000
 
-.PHONY:	storage erase read read__nvs
+INDEX_ADDR = 0x300000
+UP_MAIN_ADDR = 0x110000
+UP_INDEX_ADDR = 0x310000
+
+.PHONY:	storage erase upgrade
+
+MINIFIER = ~/.netbeans/minifierbeans/custom-packages/html-minifier-terser
+INDEX_SRC = $(PROJECT_PATH)/main/index.html
+INDEX_TMP = $(PROJECT_PATH)/tmp/index.html.min
+INDEX_GZ = $(PROJECT_PATH)/tmp/index.gz
+INDEX_BIN = $(PROJECT_PATH)/tmp/index.bin
+FIRMWARE_BIN = $(PROJECT_PATH)/build/esp-clock.bin
+UPGRADE_BIN = $(PROJECT_PATH)/tmp/upgrade.bin
+
+define num2bin
+	./nc $(1) >>$(2)
+endef
+
+define upgrade_header
+	echo -n "eclk" >>$(3)
+	$(call num2bin,`echo $(1)`,$(3))
+	$(call num2bin,0x`crc32 $(2)`,$(3))
+endef
+
+define file_header
+	$(call num2bin,`stat -c "%s" $(1)`,$(2))
+	cat $(1) >>$(2)
+endef
 
 storage:
-	/home/alex/.netbeans/minifierbeans/custom-packages/html-minifier-terser "$(PROJECT_PATH)/main/index.html" "--minify-js" "true" "--minify-css" "true" "--minify-urls" "true" "--collapse-whitespace" "--keep-closing-slash" "--output" "$(PROJECT_PATH)/tmp/index.html.min"
-	gzip --best --force -n -c $(PROJECT_PATH)/tmp/index.html.min >$(PROJECT_PATH)/tmp/index.gz
-	stat -c "%s" $(PROJECT_PATH)/tmp/index.gz | xargs printf "0: %.8x" | xxd -r -g4 >$(PROJECT_PATH)/tmp/index.bin
-	cat $(PROJECT_PATH)/tmp/index.gz >>$(PROJECT_PATH)/tmp/index.bin
-	$(FLASH_TOOL) write_flash $(PART_ADDR) $(PROJECT_PATH)/tmp/index.bin
+	$(MINIFIER) "$(INDEX_SRC)" "--minify-js" "true" "--minify-css" "true" "--minify-urls" "true" "--collapse-whitespace" "--keep-closing-slash" "--output" "$(INDEX_TMP)"
+	gzip --best --force -n -c $(INDEX_TMP) >$(INDEX_GZ)
+	rm -f $(INDEX_BIN)
+	$(call file_header,$(INDEX_GZ),$(INDEX_BIN))
+	$(FLASH_TOOL) write_flash $(INDEX_ADDR) $(INDEX_BIN)
 
 erase:
 	$(FLASH_TOOL) erase_flash
 
-read:
-	$(FLASH_TOOL) read_flash $(PART_ADDR) 0x1000 storage.bin
-
-read_nvs:
-	$(FLASH_TOOL) read_flash 0x009000 0x006000 nvs.bin
+upgrade:
+	rm -f $(UPGRADE_BIN)
+	$(call upgrade_header,$(UP_MAIN_ADDR),$(FIRMWARE_BIN),$(UPGRADE_BIN))
+	$(call file_header,$(FIRMWARE_BIN),$(UPGRADE_BIN))
+	$(call upgrade_header,$(UP_INDEX_ADDR),$(INDEX_BIN),$(UPGRADE_BIN))
+	$(call file_header,$(INDEX_BIN),$(UPGRADE_BIN))

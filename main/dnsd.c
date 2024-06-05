@@ -65,7 +65,7 @@ static void header_format(HEADER *header)
     header->arcount = ntohs(header->arcount);
 }
 
-int get_u16(void *buf, uint16_t *v)
+static int get_u16(void *buf, uint16_t *v)
 {
     U16 *u16 = (U16 *)buf;
     *v = ntohs(u16->v);
@@ -111,7 +111,7 @@ static char *get_name(uint8_t *buf, int *sz, uint16_t *type, uint16_t *class)
     return name;
 }
 
-int set_name(uint8_t *buf, char *name)
+static int set_name(uint8_t *buf, char *name)
 {
     int len = 0;
     for (;;)
@@ -133,14 +133,14 @@ int set_name(uint8_t *buf, char *name)
     return len;
 }
 
-int set_u16(void *buf, uint16_t v)
+static int set_u16(void *buf, uint16_t v)
 {
     U16 *u16 = (U16 *)buf;
     u16->v = htons(v);
     return 2;
 }
 
-int set_u32(void *buf, uint32_t v)
+static int set_u32(void *buf, uint32_t v)
 {
     U32 *u32 = (U32 *)buf;
     u32->v = htonl(v);

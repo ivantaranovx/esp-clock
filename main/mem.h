@@ -2,7 +2,15 @@
 #ifndef MEM_H
 #define MEM_H
 
+#define FLASH_BLOCK_MASK (SPI_FLASH_SEC_SIZE - 1)
+#define FLASH_ADDR_MASK (~FLASH_BLOCK_MASK)
+
+#define MAIN_ADDR 0x010000
 #define INDEX_ADDR 0x300000
 #define SETTINGS_ADDR 0x3ff000
+#define UP_MAIN_ADDR 0x110000
+#define UP_MAIN_LEN 0xf0000
+#define UP_INDEX_ADDR 0x310000
+#define UP_INDEX_LEN 0x10000
 
 #endif /* MEM_H */

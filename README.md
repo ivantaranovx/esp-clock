@@ -5,7 +5,7 @@ This is a ESP8266 based watch. The watch receives time from the NTP server. Time
 <img src="res/webif_v0.jpg" alt="web interface" width="200"/>
 
 ## v0
-First version. the watch has a 7-segment LED display.
+First version. The watch has a 7-segment LED display.
 
 <img src="res/v0.jpg" alt="v0" width="200"/>
 
