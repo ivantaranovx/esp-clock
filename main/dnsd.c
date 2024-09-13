@@ -19,7 +19,7 @@
 #define QCLASS_IN 1
 #define TTL 300
 
-static int dns_socket;
+static int dns_socket = -1;
 static struct sockaddr_in saddr;
 static uint8_t *pkt_buf;
 static ip4_addr_t local_ip;
@@ -150,10 +150,13 @@ static int set_u32(void *buf, uint32_t v)
 static void dns_server_task(void *pvParameters)
 {
     HEADER *header = (HEADER *)pkt_buf;
+    ESP_LOGI(TAG, "started");
     for (;;)
     {
         socklen_t socklen = sizeof(saddr);
         int pkt_len = recvfrom(dns_socket, pkt_buf, PKT_SZ_MAX, 0, (struct sockaddr *)&saddr, &socklen);
+        if (pkt_len < 0)
+            break;
         if (pkt_len <= sizeof(HEADER))
         {
             ESP_LOGE(TAG, "recvfrom: %s", strerror(errno));
@@ -161,7 +164,10 @@ static void dns_server_task(void *pvParameters)
         }
         header_format(header);
         if (header->flags.qr || (header->flags.opcode > 0) || header->flags.tc || (header->qdcount != 1))
+        {
+            ESP_LOGE(TAG, "invalid query");
             continue;
+        }
         pkt_len -= sizeof(HEADER);
         int rr_off = sizeof(HEADER);
 
@@ -170,7 +176,10 @@ static void dns_server_task(void *pvParameters)
         uint16_t rr_class;
         char *rr_name = get_name(&pkt_buf[rr_off], &sz, &rr_type, &rr_class);
         if (rr_name == 0)
+        {
+            ESP_LOGE(TAG, "invalid name");
             continue;
+        }
         if ((pkt_len == sz) && (rr_type == QTYPE_A) && (rr_class == QCLASS_IN))
         {
             ESP_LOGD(TAG, "A IN %s", rr_name);
@@ -195,26 +204,35 @@ static void dns_server_task(void *pvParameters)
         }
         vPortFree(rr_name);
     }
+    ESP_LOGI(TAG, "stopped");
+    vTaskDelete(0);
 }
 
 esp_err_t dnsd_init()
 {
-    esp_err_t err;
-    tcpip_adapter_ip_info_t ip_info;
-    ERR_RET(tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info));
-    local_ip.addr = ip_info.ip.addr;
-    saddr.sin_addr.s_addr = local_ip.addr;
-    saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(PORT);
-    int addr_family = AF_INET;
-    int ip_protocol = IPPROTO_IP;
-
-    dns_socket = socket(addr_family, SOCK_DGRAM, ip_protocol);
+    dns_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (dns_socket < 0)
     {
         ESP_LOGE(TAG, "socket: %s", strerror(errno));
         goto err;
     }
+    int enable = 1;
+    if (setsockopt(dns_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0)
+    {
+        ESP_LOGE(TAG, "setsockopt: %d", errno);
+        goto err;
+    }
+    tcpip_adapter_ip_info_t ip_info;
+    if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "get_ip_info");
+        goto err;
+    }
+    local_ip.addr = ip_info.ip.addr;
+    saddr.sin_addr.s_addr = local_ip.addr;
+    saddr.sin_family = AF_INET;
+    saddr.sin_port = htons(PORT);
+
     if (bind(dns_socket, (struct sockaddr *)&saddr, sizeof(saddr)) < 0)
     {
         ESP_LOGE(TAG, "bind: %s", strerror(errno));
@@ -226,15 +244,23 @@ esp_err_t dnsd_init()
         ESP_LOGE(TAG, "out of memory");
         goto err;
     }
-    if (pdPASS == xTaskCreate(dns_server_task, TAG, 800, NULL, 5, NULL))
+    if (pdPASS != xTaskCreate(dns_server_task, TAG, 800, NULL, 5, NULL))
     {
-        ESP_LOGI(TAG, "listen on %s", inet_ntoa(local_ip));
-        return ESP_OK;
+        ESP_LOGE(TAG, "xTaskCreate");
+        goto err;
     }
+    return ESP_OK;
 err:
     if (dns_socket >= 0)
         close(dns_socket);
     if (pkt_buf != 0)
         vPortFree(pkt_buf);
     return ESP_FAIL;
+}
+
+void dnsd_stop(void)
+{
+    if (dns_socket >= 0)
+        close(dns_socket);
+    dns_socket = -1;
 }

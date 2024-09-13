@@ -146,6 +146,18 @@
                 Array.from(timezone.options).forEach(option => {
                     option.selected = (data.tz === option.value);
                 });
+                document.getElementById("day_time").value = data.day_time;
+                document.getElementById("night_time").value = data.night_time;
+                document.getElementById("alarm_time").value = data.alarm_time;
+                alarm_flags = parseInt(data.alarm_flags);
+                document.getElementById("alarm_sun").checked = (alarm_flags & 0x01) ? true : false;
+                document.getElementById("alarm_mon").checked = (alarm_flags & 0x02) ? true : false;
+                document.getElementById("alarm_tue").checked = (alarm_flags & 0x04) ? true : false;
+                document.getElementById("alarm_wed").checked = (alarm_flags & 0x08) ? true : false;
+                document.getElementById("alarm_thu").checked = (alarm_flags & 0x10) ? true : false;
+                document.getElementById("alarm_fri").checked = (alarm_flags & 0x20) ? true : false;
+                document.getElementById("alarm_sat").checked = (alarm_flags & 0x40) ? true : false;
+                document.getElementById("hourly").checked = (alarm_flags & 0x80) ? true : false;
                 stateTimeout = setTimeout(() => {
                     getState();
                 }, 1000);
@@ -154,7 +166,27 @@
         function save() {
             clearTimeout(stateTimeout);
             setLoaderVisibility(true);
+
+            day_time = document.getElementById("day_time").value.split(":");
+            night_time = document.getElementById("night_time").value.split(":");
+            alarm_time = document.getElementById("alarm_time").value.split(":");
+
+            alarm_flags = 0;
+            if (document.getElementById("alarm_sun").checked) alarm_flags |= 0x01;
+            if (document.getElementById("alarm_mon").checked) alarm_flags |= 0x02;
+            if (document.getElementById("alarm_tue").checked) alarm_flags |= 0x04;
+            if (document.getElementById("alarm_wed").checked) alarm_flags |= 0x08;
+            if (document.getElementById("alarm_thu").checked) alarm_flags |= 0x10;
+            if (document.getElementById("alarm_fri").checked) alarm_flags |= 0x20;
+            if (document.getElementById("alarm_sat").checked) alarm_flags |= 0x40;
+            if (document.getElementById("hourly").checked) alarm_flags |= 0x80;
+
             get_data("/settings", function (data) {
+                document.getElementById("save_result").innerHTML =
+                    (data.result == "ok") ? "saved" : "error";
+                setTimeout(() => {
+                    document.getElementById("save_result").innerHTML = "";
+                }, 3000);
                 stateTimeout = setTimeout(() => {
                     getState();
                 }, 5000);
@@ -162,7 +194,12 @@
                 ssid: document.getElementById("ssid").value,
                 pass: document.getElementById("pass").value,
                 ntp: document.getElementById("ntp").value,
-                tz: document.getElementById("timezone").value
+                tz: document.getElementById("timezone").value,
+                day_hour: parseInt(day_time[0]),
+                night_hour: parseInt(night_time[0]),
+                alarm_hour: parseInt(alarm_time[0]),
+                alarm_min: parseInt(alarm_time[1]),
+                alarm_flags: alarm_flags,
             });
         }
         function upgrade() {
@@ -183,6 +220,13 @@
         <div class="loader-wheel"></div>
     </div>
     <table>
+        <tr>
+            <td>
+                <input type='button' value='Save' onclick='save()'>
+            </td>
+            <td style='vertical-align: bottom;' id='save_result'>
+            </td>
+        </tr>
         <tr>
             <th colspan='2'>WiFi settings</th>
         </tr>
@@ -212,15 +256,58 @@
                     <option value='GMT-1GMT-2,M3.5.0/2,M10.5.0/3'>Europe/Warsaw</option>
                     <option value='GMT-2GMT-3,M3.5.0/3,M10.5.0/4'>Europe/Kyiv</option>
                     <option value='GMT-3'>Europe/Moscow</option>
+                    <option value='GMT-0'>GMT</option>
                 </select>
             </td>
         </tr>
         <tr>
-            <td colspan='2'>
-                <hr>
-                <input type='button' value='Save' onclick='save()'>
-            </td>
+            <td>Beg. of day</td>
+            <td><input type='time' id='day_time'></td>
         </tr>
+        <tr>
+            <td>Beg. of night</td>
+            <td><input type='time' id='night_time'></td>
+        </tr>
+        <tr>
+            <td>Hourly chime</td>
+            <td><input type='checkbox' id='hourly'></td>
+        </tr>
+        <tr>
+            <th colspan='2'>Alarm settings</th>
+        </tr>
+        <tr>
+            <td>Alarm time</td>
+            <td><input type='time' id='alarm_time'></td>
+        </tr>
+        <tr>
+            <td>Sun</td>
+            <td><input type='checkbox' id='alarm_sun'></td>
+        </tr>
+        <tr>
+            <td>Mon</td>
+            <td><input type='checkbox' id='alarm_mon'></td>
+        </tr>
+        <tr>
+            <td>Tue</td>
+            <td><input type='checkbox' id='alarm_tue'></td>
+        </tr>
+        <tr>
+            <td>Wed</td>
+            <td><input type='checkbox' id='alarm_wed'></td>
+        </tr>
+        <tr>
+            <td>Thu</td>
+            <td><input type='checkbox' id='alarm_thu'></td>
+        </tr>
+        <tr>
+            <td>Fri</td>
+            <td><input type='checkbox' id='alarm_fri'></td>
+        </tr>
+        <tr>
+            <td>Sat</td>
+            <td><input type='checkbox' id='alarm_sat'></td>
+        </tr>
+
         <tr>
             <th colspan='2'>Firmware upgrade</th>
         </tr>
@@ -234,6 +321,7 @@
         <tr>
             <td colspan='2'><input type='button' value='Upgrade' onclick='upgrade()'></td>
         </tr>
+
     </table>
 </body>
 

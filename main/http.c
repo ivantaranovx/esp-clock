@@ -28,6 +28,7 @@ static esp_err_t http_recv_settings(httpd_req_t *req);
 static esp_err_t http_recv_upgrade(httpd_req_t *req);
 
 #define HTTP_ROOT "/"
+#define HTTP_REDIRECT "/"
 #define HTTP_SETTINGS "/settings"
 #define HTTP_STATE "/state"
 #define HTTP_NOINDEX "<html><body><h1>no index</h1></body></html>"
@@ -41,6 +42,11 @@ static esp_err_t http_recv_upgrade(httpd_req_t *req);
 #define KEY_NTP "ntp"
 #define KEY_VER "ver"
 #define KEY_TZ "tz"
+#define KEY_DAY_HOUR "day_hour"
+#define KEY_NIGHT_HOUR "night_hour"
+#define KEY_ALARM_HOUR "alarm_hour"
+#define KEY_ALARM_MIN "alarm_min"
+#define KEY_ALARM_FLAGS "alarm_flags"
 
 #define RES_OK "{\"result\":\"ok\"}"
 #define UP_SIGN "eclk"
@@ -56,7 +62,7 @@ typedef struct
 {
     char *key;
     int sz;
-    char *val;
+    void *val;
 } SET_ITEM;
 
 static SET_ITEM set_items[] = {
@@ -64,6 +70,11 @@ static SET_ITEM set_items[] = {
     {KEY_PASS, sizeof(sta_cfg.sta.password), (char *)sta_cfg.sta.password},
     {KEY_NTP, sizeof(settings.ntp), settings.ntp},
     {KEY_TZ, sizeof(settings.tz), settings.tz},
+    {KEY_DAY_HOUR, sizeof(settings.day_hour), &settings.day_hour},
+    {KEY_NIGHT_HOUR, sizeof(settings.night_hour), &settings.night_hour},
+    {KEY_ALARM_HOUR, sizeof(settings.alarm_hour), &settings.alarm_hour},
+    {KEY_ALARM_MIN, sizeof(settings.alarm_min), &settings.alarm_min},
+    {KEY_ALARM_FLAGS, sizeof(settings.alarm_flags), &settings.alarm_flags},
     {.key = 0}};
 
 typedef struct
@@ -145,8 +156,19 @@ static esp_err_t http_send_settings(httpd_req_t *req)
         ERR_EX(httpd_resp_send_chunk(req, buf, len));
         b = true;
     }
-    len = sprintf(buf, "]}");
+    len = sprintf(buf, "]"
+                       ",\"day_time\":\"%02d:00\""
+                       ",\"night_time\":\"%02d:00\""
+                       ",\"alarm_time\":\"%02d:%02d\""
+                       ",\"alarm_flags\":%d"
+                       "}",
+                  settings.day_hour,
+                  settings.night_hour,
+                  settings.alarm_hour,
+                  settings.alarm_min,
+                  settings.alarm_flags);
     ERR_EX(httpd_resp_send_chunk(req, buf, len));
+
     ERR_EX(httpd_resp_send_chunk(req, 0, 0));
     err = ESP_OK;
 exit:
@@ -163,6 +185,7 @@ static esp_err_t http_send_state(httpd_req_t *req)
     int len = sprintf(buf, "{\"connected\": %s}",
                       bool_to_string(wifi_is_connected()));
     ERR_EX(httpd_resp_send(req, buf, len));
+    wifi_ap_activity();
     err = ESP_OK;
 exit:
     vPortFree(buf);
@@ -182,8 +205,15 @@ static void settings_cb(char *key, char *value, int level)
                 (len == 0) ||
                 (len >= set_items[i].sz))
                 continue;
-            memset(set_items[i].val, 0, set_items[i].sz);
-            memcpy(set_items[i].val, value, len);
+            switch (set_items[i].sz)
+            {
+            case 4:
+                *((int *)set_items[i].val) = atoi(value);
+                break;
+            default:
+                memset(set_items[i].val, 0, set_items[i].sz);
+                memcpy(set_items[i].val, value, len);
+            }
             break;
         }
         break;
@@ -304,7 +334,7 @@ static esp_err_t http_redirect(httpd_req_t *req)
 {
     esp_err_t err;
     ERR_RET(httpd_resp_set_status(req, "307 moved"));
-    ERR_RET(httpd_resp_set_hdr(req, "Location", HTTP_ROOT));
+    ERR_RET(httpd_resp_set_hdr(req, "Location", HTTP_REDIRECT));
     return httpd_resp_send(req, 0, 0);
 }
 
@@ -337,9 +367,6 @@ static const httpd_uri_t uri_post_upgrade = {
     .uri = HTTP_UPGRADE,
     .method = HTTP_POST,
     .handler = http_recv_upgrade};
-
-#define T1 "12345"
-#define T2 "6789"
 
 esp_err_t httpd_init(void)
 {

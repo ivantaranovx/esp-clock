@@ -3,18 +3,37 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
 
 #include "wifi.h"
 #include "opt.h"
 #include "timer.h"
+#include "dnsd.h"
 
 #include <string.h>
 
 #define TAG "wifi"
 #define SCAN_TIME 1000
+#define BTN_AP GPIO_NUM_14
+#define AP_TIMEOUT 600
 
 static bool is_connected = false;
-static int ap_ttl = 300;
+static bool ap_start_f = false;
+static int ap_ttl = 0;
+
+static void start_ap(void)
+{
+    if (ap_ttl)
+        return;
+    ap_ttl = AP_TIMEOUT;
+    esp_wifi_set_mode(WIFI_MODE_APSTA);
+}
+
+void wifi_ap_activity(void)
+{
+    if (ap_ttl)
+        ap_ttl = AP_TIMEOUT;
+}
 
 static void wifi_scan_start()
 {
@@ -37,6 +56,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         is_connected = false;
         ESP_LOGI(TAG, "disconnected from WiFi");
         esp_wifi_connect();
+        break;
+    case WIFI_EVENT_AP_START:
+        dnsd_init();
+        ESP_LOGI(TAG, "AP started");
+        break;
+    case WIFI_EVENT_AP_STOP:
+        dnsd_stop();
+        ESP_LOGI(TAG, "AP stopped");
         break;
     }
 }
@@ -61,6 +88,12 @@ static void timer_event_handler(void *arg, esp_event_base_t event_base,
         ap_ttl--;
         if (ap_ttl == 0)
             esp_wifi_set_mode(WIFI_MODE_STA);
+    }
+
+    if (ap_start_f)
+    {
+        ap_start_f = 0;
+        start_ap();
     }
 }
 
@@ -93,6 +126,11 @@ exit:
     return ap_records;
 }
 
+void gpio_isr(void *p)
+{
+    ap_start_f = true;
+}
+
 esp_err_t wifi_init()
 {
     esp_err_t err;
@@ -105,7 +143,7 @@ esp_err_t wifi_init()
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ERR_RET(esp_wifi_init(&cfg));
-    ERR_RET(esp_wifi_set_mode(WIFI_MODE_APSTA));
+    // ERR_RET(esp_wifi_set_mode(WIFI_MODE_APSTA));
 
     wifi_config_t ap_config;
     ERR_RET(esp_wifi_get_config(ESP_IF_WIFI_AP, &ap_config));
@@ -117,6 +155,18 @@ esp_err_t wifi_init()
     }
 
     ERR_RET(esp_wifi_start());
+
+    start_ap();
+
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pin_bit_mask = BIT(BTN_AP);
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 1;
+    gpio_config(&io_conf);
+
+    gpio_isr_handler_add(BTN_AP, gpio_isr, 0);
 
     return ESP_OK;
 }

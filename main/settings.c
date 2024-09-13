@@ -5,6 +5,7 @@
 #include "settings.h"
 #include "mem.h"
 #include "timezone.h"
+#include "esp_wifi.h"
 
 #include <string.h>
 
@@ -15,7 +16,12 @@ SETTINGS settings;
 
 static const SETTINGS settings_default = {
     .ntp = "pool.ntp.org",
-    .tz = "Europe/Dublin"};
+    .tz = "GMT-0",
+    .alarm_flags = HR_CHIME,
+    .alarm_hour = 7,
+    .alarm_min = 30,
+    .day_hour = 7,
+    .night_hour = 22};
 
 void settings_load(void)
 {
@@ -34,6 +40,8 @@ void settings_save(void)
     timezone_set(settings.tz);
     ESP_LOGI(TAG, "ntp: %s", settings.ntp);
     ESP_LOGI(TAG, "tz: %s", settings.tz);
+
+    esp_wifi_connect();
 }
 
 SETTINGS *settings_get(void)
