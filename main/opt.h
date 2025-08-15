@@ -2,7 +2,7 @@
 #ifndef OPT_H
 #define OPT_H
 
-#define APP_NAME "esp-clock"
-#define APP_VER "Nixie 1.0"
+#define APP_NAME "ESP-clock"
+#define APP_VER APP_NAME " 1.1"
 
 #endif /* OPT_H */

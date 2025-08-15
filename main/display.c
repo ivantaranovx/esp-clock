@@ -1,12 +1,8 @@
 
 #include "driver/gpio.h"
 #include "driver/hw_timer.h"
-#include "esp_event.h"
-
+#include "rom/ets_sys.h"
 #include "display.h"
-#include "timer.h"
-
-ESP_EVENT_DEFINE_BASE(TIMER_EVENT);
 
 #include <stdbool.h>
 #include <string.h>
@@ -17,7 +13,6 @@ static void out_ap(uint8_t b);
 static void out_disp(uint8_t b);
 
 #define TIMER_VALUE_US 200
-#define EVENT_PERIOD (1000000 / TIMER_VALUE_US)
 
 #define DIGITS 4
 #define SEG_OFF 10
@@ -43,7 +38,6 @@ static uint8_t disp[DIGITS];
 
 static void display_cb(void *arg)
 {
-    static int tmr = 0;
     static uint8_t dc = 0;
     static bool dd = false;
 
@@ -83,13 +77,6 @@ static void display_cb(void *arg)
     {
         clock_flags.alarm = 0;
         ap_play(SND_ALARM);
-    }
-
-    tmr++;
-    if (tmr >= EVENT_PERIOD)
-    {
-        tmr = 0;
-        esp_event_post(TIMER_EVENT, 1, NULL, 0, portMAX_DELAY);
     }
 }
 
@@ -137,7 +124,7 @@ static void ap_play(uint8_t grp)
     gpio_set_level(SHIFT, 0);
 }
 
-void display_set(DISPLAY_D d, uint16_t v)
+void display_set(DISPLAY_D d, unsigned v)
 {
     switch (d)
     {

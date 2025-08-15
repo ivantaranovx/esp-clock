@@ -9,7 +9,7 @@ typedef enum {
 DISPLAY_D;
 
 void display_init(void);
-void display_set(DISPLAY_D d, uint16_t v);
+void display_set(DISPLAY_D d, unsigned v);
 
 typedef union
 {

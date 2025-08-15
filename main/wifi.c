@@ -7,7 +7,6 @@
 
 #include "wifi.h"
 #include "opt.h"
-#include "timer.h"
 #include "dnsd.h"
 
 #include <string.h>
@@ -15,7 +14,7 @@
 #define TAG "wifi"
 #define SCAN_TIME 1000
 #define BTN_AP GPIO_NUM_14
-#define AP_TIMEOUT 600
+#define AP_TIMEOUT 60
 
 static bool is_connected = false;
 static bool ap_start_f = false;
@@ -27,6 +26,7 @@ static void start_ap(void)
         return;
     ap_ttl = AP_TIMEOUT;
     esp_wifi_set_mode(WIFI_MODE_APSTA);
+    ESP_LOGI(TAG, "start AP");
 }
 
 void wifi_ap_activity(void)
@@ -80,19 +80,21 @@ static void ip_event_handler(void *arg, esp_event_base_t event_base,
     }
 }
 
-static void timer_event_handler(void *arg, esp_event_base_t event_base,
-                                int32_t event_id, void *event_data)
+void wifi_tick(void)
 {
     if (is_connected && ap_ttl)
     {
         ap_ttl--;
         if (ap_ttl == 0)
+        {
             esp_wifi_set_mode(WIFI_MODE_STA);
+            ESP_LOGI(TAG, "stop AP");
+        }
     }
 
     if (ap_start_f)
     {
-        ap_start_f = 0;
+        ap_start_f = false;
         start_ap();
     }
 }
@@ -102,7 +104,7 @@ static const wifi_config_t ap_config_default = {
         .ssid = APP_NAME,
         .ssid_len = sizeof(APP_NAME) - 1,
         .password = "12345678",
-        .max_connection = 3,
+        .max_connection = 1,
         .authmode = WIFI_AUTH_WPA2_PSK}};
 
 bool wifi_is_connected(void)
@@ -138,12 +140,9 @@ esp_err_t wifi_init()
                                        &wifi_event_handler, NULL));
     ERR_CHK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID,
                                        &ip_event_handler, NULL));
-    ERR_CHK(esp_event_handler_register(TIMER_EVENT, ESP_EVENT_ANY_ID,
-                                       &timer_event_handler, NULL));
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ERR_RET(esp_wifi_init(&cfg));
-    // ERR_RET(esp_wifi_set_mode(WIFI_MODE_APSTA));
 
     wifi_config_t ap_config;
     ERR_RET(esp_wifi_get_config(ESP_IF_WIFI_AP, &ap_config));

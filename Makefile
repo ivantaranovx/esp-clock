@@ -22,10 +22,10 @@ INDEX_TMP = $(PROJECT_PATH)/tmp/index.html.min
 INDEX_GZ = $(PROJECT_PATH)/tmp/index.gz
 INDEX_BIN = $(PROJECT_PATH)/tmp/index.bin
 FIRMWARE_BIN = $(PROJECT_PATH)/build/esp-clock.bin
-UPGRADE_BIN = $(PROJECT_PATH)/tmp/upgrade.bin
+UPGRADE_BIN = $(PROJECT_PATH)/tmp/upgrade.eclk
 
 define num2bin
-	./nc $(1) >>$(2)
+	nc/nc $(1) >>$(2)
 endef
 
 define upgrade_header
@@ -40,8 +40,8 @@ define file_header
 endef
 
 storage:
-	$(MINIFIER) "$(INDEX_SRC)" "--minify-js" "true" "--minify-css" "true" "--minify-urls" "true" "--collapse-whitespace" "--keep-closing-slash" "--output" "$(INDEX_TMP)"
-	gzip --best --force -n -c $(INDEX_TMP) >$(INDEX_GZ)
+#	$(MINIFIER) "$(INDEX_SRC)" "--minify-js" "true" "--minify-css" "true" "--minify-urls" "true" "--collapse-whitespace" "--keep-closing-slash" "--output" "$(INDEX_TMP)"
+	gzip --best --force -n -c $(INDEX_SRC) >$(INDEX_GZ)
 	rm -f $(INDEX_BIN)
 	$(call file_header,$(INDEX_GZ),$(INDEX_BIN))
 	$(FLASH_TOOL) write_flash $(INDEX_ADDR) $(INDEX_BIN)
