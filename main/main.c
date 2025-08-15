@@ -19,7 +19,10 @@
 
 #define TAG "main"
 
-static bool ntp_sync = false;
+static bool rtc_sync = false;
+static int ntp_check = 0;
+
+#define NTP_CHK_TIMEOUT 3
 
 static void main_task(void *arg)
 {
@@ -36,10 +39,17 @@ static void main_task(void *arg)
 
         wifi_tick();
 
-        if (!ntp_sync && (SNTP_SYNC_STATUS_COMPLETED == sntp_get_sync_status()))
+        if (!rtc_sync && (SNTP_SYNC_STATUS_COMPLETED == sntp_get_sync_status()))
         {
             rtc_save();
-            ntp_sync = true;
+            rtc_sync = true;
+            ntp_check = 0;
+        }
+
+        if (ntp_check >= NTP_CHK_TIMEOUT)
+        {
+            ntp_check = 0;
+            rtc_load();
         }
 
         localtime_r(&now, &timeinfo);
@@ -56,7 +66,8 @@ static void main_task(void *arg)
         {
             if (timeinfo.tm_min == 0)
             {
-                ntp_sync = false;
+                rtc_sync = false;
+                ntp_check++;
                 if (clock_flags.day &&
                     (settings.alarm_flags & HR_CHIME))
                     clock_flags.ben = 1;

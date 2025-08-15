@@ -1,5 +1,7 @@
 /.vscode/
 /build/
 /tmp/
+/nc/
+/old/
+/res/sch-v1/
 sdkconfig.old
-nc
