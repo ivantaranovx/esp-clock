@@ -36,13 +36,13 @@ static void main_task(void *arg)
 
         wifi_tick();
 
-        localtime_r(&now, &timeinfo);
-
         if (!ntp_sync && (SNTP_SYNC_STATUS_COMPLETED == sntp_get_sync_status()))
         {
             rtc_save();
             ntp_sync = true;
         }
+
+        localtime_r(&now, &timeinfo);
 
         display_set(DISPLAY_HOURS, timeinfo.tm_hour);
         display_set(DISPLAY_MINUTES, timeinfo.tm_min);
