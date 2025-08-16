@@ -17,6 +17,7 @@
 #define AP_TIMEOUT 60
 
 static bool is_connected = false;
+static int reconnect = 0;
 static bool ap_start_f = false;
 static int ap_ttl = 0;
 
@@ -53,9 +54,11 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         esp_wifi_connect();
         break;
     case WIFI_EVENT_STA_DISCONNECTED:
+        reconnect = 15;
+        if (!is_connected)
+            break;
         is_connected = false;
         ESP_LOGI(TAG, "disconnected from WiFi");
-        esp_wifi_connect();
         break;
     case WIFI_EVENT_AP_START:
         dnsd_init();
@@ -96,6 +99,13 @@ void wifi_tick(void)
     {
         ap_start_f = false;
         start_ap();
+    }
+
+    if (reconnect)
+    {
+        reconnect--;
+        if (reconnect == 0)
+            esp_wifi_connect();
     }
 }
 

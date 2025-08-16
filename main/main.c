@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "lwip/apps/sntp.h"
 #include "driver/gpio.h"
+#include "driver/uart.h"
 
 #include "err.h"
 #include "opt.h"
@@ -83,7 +84,10 @@ static void main_task(void *arg)
 void app_main()
 {
     esp_err_t err;
-    ESP_LOGI(TAG, "%s", APP_NAME);
+
+    uart_set_baudrate(0, 115200);
+    printf("\n\f%s\n", APP_VER);
+    fflush(stdout);
 
     ERR_CHK(gpio_install_isr_service(0));
     ERR_CHK(esp_netif_init());
