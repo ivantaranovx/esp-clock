@@ -6,7 +6,7 @@ Meet our ESP8266-powered Nixie tube clock — a perfect blend of vintage charm a
 <img src="res/webif.png" alt="web interface" width="200"/>
 
 ## schematic
-main block [schematic](res/ESPClock-main.pdf.pdf)
+main block [schematic](res/ESPClock-main.pdf)
 
 nixie tube block [schematic](res/ESPClock-nixie.pdf)
 
