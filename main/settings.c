@@ -17,8 +17,8 @@ SETTINGS settings;
 static const SETTINGS settings_default = {
     .ntp = "pool.ntp.org",
     .tz = "GMT-0",
-    .alarm_flags = HR_CHIME,
-    .alarm_hour = 7,
+    .alarm_flags = HR_CHIME | HR_24FMT,
+    .alarm_hour = 6,
     .alarm_min = 30,
     .day_hour = 7,
     .night_hour = 22};

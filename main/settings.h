@@ -10,16 +10,19 @@
 #define ALARM_FRI 0x20
 #define ALARM_SAT 0x40
 #define HR_CHIME 0x80
+#define HR_24FMT 0x100
+
+#define SET_STR_SZ 64
 
 typedef struct __attribute__((packed))
 {
-    char ntp[64];
-    char tz[64];
-    int day_hour;
-    int night_hour;
-    int alarm_hour;
-    int alarm_min;
-    int alarm_flags;
+    char ntp[SET_STR_SZ];
+    char tz[SET_STR_SZ];
+    uint8_t day_hour;
+    uint8_t night_hour;
+    uint8_t alarm_hour;
+    uint8_t alarm_min;
+    uint16_t alarm_flags;
     uint32_t magic;
 } SETTINGS;
 

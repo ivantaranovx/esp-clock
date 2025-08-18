@@ -55,7 +55,15 @@ static void main_task(void *arg)
 
         localtime_r(&now, &timeinfo);
 
-        display_set(DISPLAY_HOURS, timeinfo.tm_hour);
+        int hour = timeinfo.tm_hour;
+        if ((settings.alarm_flags & HR_24FMT) == 0)
+        {
+            hour %= 12;
+            if (!hour)
+                hour = 12;
+        }
+
+        display_set(DISPLAY_HOURS, hour);
         display_set(DISPLAY_MINUTES, timeinfo.tm_min);
 
         if (settings.night_hour > settings.day_hour)

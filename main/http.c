@@ -202,17 +202,25 @@ static void settings_cb(char *key, char *value, int level)
         for (int i = 0; set_items[i].key; i++)
         {
             if (strcmp(key, set_items[i].key) ||
-                (len == 0) ||
-                (len >= set_items[i].sz))
+                (len == 0))
                 continue;
             switch (set_items[i].sz)
             {
+            case 1:
+                *((uint8_t *)set_items[i].val) = atoi(value);
+                break;
+            case 2:
+                *((uint16_t *)set_items[i].val) = atoi(value);
+                break;
+            case 3:
             case 4:
-                *((int *)set_items[i].val) = atoi(value);
                 break;
             default:
+                if (len >= set_items[i].sz)
+                    break;
                 memset(set_items[i].val, 0, set_items[i].sz);
                 memcpy(set_items[i].val, value, len);
+                break;
             }
             break;
         }
